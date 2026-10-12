@@ -1,0 +1,28 @@
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+.venv*/
+venv*/
+
+# Python cache
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Editor files
+.idea/
+.vscode/
+
+# Local settings
+.env
+.env.*
+!.env.example
+
+# Build files
+build/
+dist/
+*.egg-info/
