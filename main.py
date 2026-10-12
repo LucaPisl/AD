@@ -67,4 +67,18 @@ for contamination in [0.1, 0.05, 0.2]:
 # More contamination lowers the threshold, so more points become anomalies.
 # The ROC stays the same here because KNN scores don't depend on contamination.
 
+
+# Ex 3
+X, y = generate_data(n_train=1000, n_test=0, n_features=1,
+                     contamination=0.1, train_only=True, random_state=42)
+
+z_scores = np.abs((X[:, 0] - np.mean(X[:, 0])) / np.std(X[:, 0]))
+# Take the largest 10% of scores
+threshold = np.quantile(z_scores, 0.9)
+prediction = (z_scores > threshold).astype(int)
+
+print("\nEx 3")
+print("Threshold:", threshold)
+print_metrics(y, prediction)
+
 plt.show()
