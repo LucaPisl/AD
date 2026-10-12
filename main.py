@@ -81,4 +81,28 @@ print("\nEx 3")
 print("Threshold:", threshold)
 print_metrics(y, prediction)
 
+
+# Ex 4
+np.random.seed(42)
+mu = np.array([2, 3])
+sigma = np.array([[2, 1], [1, 2]])
+L = np.linalg.cholesky(sigma)
+
+x = np.random.normal(0, 1, (900, 2))
+# Each sample is a row here, so Lx becomes x @ L.T
+normal = x @ L.T + mu
+outliers = np.random.uniform(-8, 12, (100, 2))
+X = np.vstack((normal, outliers))
+y = np.concatenate((np.zeros(900), np.ones(100)))
+
+# Standardize each column, then combine the two scores into a distance
+z = (X - np.mean(X, axis=0)) / np.std(X, axis=0)
+z_scores = np.sqrt(np.sum(z ** 2, axis=1))
+threshold = np.quantile(z_scores, 0.9)
+prediction = (z_scores > threshold).astype(int)
+
+print("\nEx 4")
+print("Threshold:", threshold)
+print_metrics(y, prediction)
+
 plt.show()
