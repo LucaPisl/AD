@@ -2,6 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from pyod.utils.data import generate_data_clusters
 from pyod.models.knn import KNN
+from pyod.models.lof import LOF
+from sklearn.datasets import make_blobs
 from sklearn.metrics import balanced_accuracy_score
 
 
@@ -151,5 +153,41 @@ for n_neighbors in [1, 5, 20, 50, 100]:
 # their scores are small and some are missed (train BA 0.88), while some points
 # on the edge of the inlier clusters get flagged. From 5 neighbors up the BA is
 # 0.99 on train and 1.0 on test, even for 100 (more than a whole anomaly cluster).
+
+
+# Ex 3
+X, cluster = make_blobs(
+    n_samples=[200, 100],
+    centers=[(-10, -10), (10, 10)],
+    cluster_std=[2, 6],
+    random_state=42,
+)
+
+for n_neighbors in [5, 20, 50]:
+    models = {
+        "KNN": KNN(contamination=0.07, n_neighbors=n_neighbors),
+        "LOF": LOF(contamination=0.07, n_neighbors=n_neighbors),
+    }
+
+    fig, axes = plt.subplots(1, 2, figsize=(10, 5))
+    print("\nEx 3 - n_neighbors:", n_neighbors)
+    for ax, (name, model) in zip(axes, models.items()):
+        model.fit(X)
+        labels = model.labels_
+
+        ax.scatter(X[labels == 0, 0], X[labels == 0, 1], s=15, color="blue")
+        ax.scatter(X[labels == 1, 0], X[labels == 1, 1], s=15, color="red")
+        ax.set_title(name)
+
+        # how many outliers fall in each cluster (cluster 0 is the dense one)
+        print(name, "outliers in dense cluster:", np.sum((labels == 1) & (cluster == 0)),
+              "in sparse cluster:", np.sum((labels == 1) & (cluster == 1)))
+    fig.suptitle("Ex 3 - n_neighbors = " + str(n_neighbors))
+
+# KNN looks at the absolute distance to the neighbors, so all 21 outliers are
+# in the sparse cluster, for any n_neighbors, and the dense cluster has none.
+# LOF compares the density of a point with the density of its neighbors, so it
+# also finds points on the edge of the dense cluster (13-16 of them) and fewer
+# in the sparse cluster (5-8). The result doesn't change much with n_neighbors.
 
 plt.show()
