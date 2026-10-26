@@ -3,8 +3,12 @@ import matplotlib.pyplot as plt
 from pyod.utils.data import generate_data_clusters
 from pyod.models.knn import KNN
 from pyod.models.lof import LOF
+from pyod.models.combination import average, maximization
+from pyod.utils.utility import standardizer
+from scipy.io import loadmat
 from sklearn.datasets import make_blobs
 from sklearn.metrics import balanced_accuracy_score
+from sklearn.model_selection import train_test_split
 
 
 # Ex 1
@@ -189,5 +193,55 @@ for n_neighbors in [5, 20, 50]:
 # LOF compares the density of a point with the density of its neighbors, so it
 # also finds points on the edge of the dense cluster (13-16 of them) and fewer
 # in the sparse cluster (5-8). The result doesn't change much with n_neighbors.
+
+
+# Ex 4
+data = loadmat("cardio.mat")
+X = data["X"]
+y = data["y"].ravel()
+contamination = np.mean(y)
+print("\nEx 4 - contamination:", round(contamination, 4))
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.4, random_state=42)
+X_train, X_test = standardizer(X_train, X_test)
+
+n_neighbors_list = np.linspace(30, 120, 10).astype(int)
+train_scores = np.zeros((len(X_train), len(n_neighbors_list)))
+test_scores = np.zeros((len(X_test), len(n_neighbors_list)))
+
+for i, n_neighbors in enumerate(n_neighbors_list):
+    model = KNN(contamination=contamination, n_neighbors=n_neighbors)
+    model.fit(X_train)
+
+    train_scores[:, i] = model.decision_scores_
+    test_scores[:, i] = model.decision_function(X_test)
+
+    train_ba = balanced_accuracy_score(y_train, model.labels_)
+    test_ba = balanced_accuracy_score(y_test, model.predict(X_test))
+    print("n_neighbors:", n_neighbors, "- train BA:", round(train_ba, 4),
+          "test BA:", round(test_ba, 4))
+
+# Normalize the scores of each model, using the train statistics
+train_scores_norm, test_scores_norm = standardizer(train_scores, test_scores)
+
+strategies = {
+    "Average": (average(train_scores_norm), average(test_scores_norm)),
+    "Maximization": (maximization(train_scores_norm), maximization(test_scores_norm)),
+}
+
+for name, (train_final, test_final) in strategies.items():
+    # the threshold comes from the train scores and is used for both sets
+    threshold = np.quantile(train_final, 1 - contamination)
+    train_prediction = (train_final > threshold).astype(int)
+    test_prediction = (test_final > threshold).astype(int)
+
+    print("\n" + name)
+    print("Threshold:", round(threshold, 4))
+    print("Train BA:", round(balanced_accuracy_score(y_train, train_prediction), 4))
+    print("Test BA:", round(balanced_accuracy_score(y_test, test_prediction), 4))
+
+# The BA of a single KNN goes up with n_neighbors (0.71 to 0.77 on train), so
+# the ensembles are not better than the models with the biggest n_neighbors.
+# Maximization is a bit better than average on test (0.805 vs 0.785).
 
 plt.show()
