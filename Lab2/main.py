@@ -57,4 +57,49 @@ fig.suptitle("Ex 1 - leverage scores, 1D")
 # the highest scores, the orange ones are not picked more than the regular ones.
 # Some regular points still show up in the top because top_k is fixed.
 
+
+# Ex 1 - 2D case, y = a*x1 + b*x2 + c + eps
+a2, b2, c2 = 2, -1, 1
+
+
+def make_data_2d(mu, var):
+    std = np.sqrt(var)
+    low = np.sqrt(0.1)
+    sizes = [n_regular, n_other, n_other, n_other]
+    x_std = [1, std, 1, std]
+    eps_mu = [0, 0, mu, mu]
+    eps_std = [low, low, std, std]
+
+    X = np.vstack([np.random.normal(0, x_std[i], (sizes[i], 2)) for i in range(4)])
+    eps = np.concatenate([np.random.normal(eps_mu[i], eps_std[i], sizes[i]) for i in range(4)])
+    types = np.repeat(np.arange(4), sizes)
+    return X, a2 * X[:, 0] + b2 * X[:, 1] + c2 + eps, types
+
+
+fig = plt.figure(figsize=(15, 5))
+for i, (mu, var) in enumerate([(0, 4), (1, 16), (2, 36)]):
+    X, y, types = make_data_2d(mu, var)
+    scores = leverage_scores(X)
+    top = np.argsort(scores)[-top_k:]
+
+    ax = fig.add_subplot(1, 3, i + 1, projection="3d")
+    for t in range(4):
+        ax.scatter(X[types == t, 0], X[types == t, 1], y[types == t],
+                   s=15, color=colors[t], label=names[t])
+    ax.scatter(X[top, 0], X[top, 1], y[top], s=120, facecolors="none",
+               edgecolors="red", linewidths=1.5, label="top leverage")
+    ax.set_title("mu = " + str(mu) + ", var = " + str(var))
+    ax.set_xlabel("x1")
+    ax.set_ylabel("x2")
+    ax.set_zlabel("y")
+    ax.legend(fontsize=7)
+
+    print("\nEx 1 (2D) mu:", mu, "var:", var)
+    print("Top", top_k, "leverage points by type:", np.bincount(types[top], minlength=4))
+
+fig.suptitle("Ex 1 - leverage scores, 2D")
+
+# Same thing in 2D: the high var on y points never end up in the top, and the
+# more var we have on x1/x2 the more the top is made of green and purple points.
+
 plt.show()
