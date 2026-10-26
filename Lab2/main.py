@@ -1,5 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from pyod.utils.data import generate_data_clusters
+from pyod.models.knn import KNN
+from sklearn.metrics import balanced_accuracy_score
 
 
 # Ex 1
@@ -101,5 +104,52 @@ fig.suptitle("Ex 1 - leverage scores, 2D")
 
 # Same thing in 2D: the high var on y points never end up in the top, and the
 # more var we have on x1/x2 the more the top is made of green and purple points.
+
+
+# Ex 2
+X_train, X_test, y_train, y_test = generate_data_clusters(
+    n_train=400,
+    n_test=200,
+    n_clusters=2,
+    n_features=2,
+    contamination=0.1,
+    random_state=42,
+)
+
+
+def plot_labels(ax, X, labels, title):
+    # 0 means normal, 1 means anomaly
+    ax.scatter(X[labels == 0, 0], X[labels == 0, 1], s=15, color="blue", label="Inliers")
+    ax.scatter(X[labels == 1, 0], X[labels == 1, 1], s=15, color="red", label="Outliers")
+    ax.set_title(title)
+
+
+for n_neighbors in [1, 5, 20, 50, 100]:
+    model = KNN(contamination=0.1, n_neighbors=n_neighbors)
+    model.fit(X_train)
+
+    # labels_ leaves each point out of its own neighbors, predict(X_train) doesn't
+    train_prediction = model.labels_
+    test_prediction = model.predict(X_test)
+
+    train_ba = balanced_accuracy_score(y_train, train_prediction)
+    test_ba = balanced_accuracy_score(y_test, test_prediction)
+    print("\nEx 2 - n_neighbors:", n_neighbors)
+    print("Train BA:", round(train_ba, 4))
+    print("Test BA:", round(test_ba, 4))
+
+    fig, axes = plt.subplots(2, 2, figsize=(10, 8))
+    plot_labels(axes[0, 0], X_train, y_train, "Train - ground truth")
+    plot_labels(axes[0, 1], X_train, train_prediction, "Train - predicted")
+    plot_labels(axes[1, 0], X_test, y_test, "Test - ground truth")
+    plot_labels(axes[1, 1], X_test, test_prediction, "Test - predicted")
+    axes[0, 0].legend()
+    fig.suptitle("Ex 2 - KNN, n_neighbors = " + str(n_neighbors))
+
+# The anomalies here are 2 small clusters (around 20 points each in train). With
+# n_neighbors = 1 the points of a cluster are each other's nearest neighbor, so
+# their scores are small and some are missed (train BA 0.88), while some points
+# on the edge of the inlier clusters get flagged. From 5 neighbors up the BA is
+# 0.99 on train and 1.0 on test, even for 100 (more than a whole anomaly cluster).
 
 plt.show()
