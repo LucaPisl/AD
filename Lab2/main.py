@@ -1,0 +1,60 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+
+# Ex 1
+np.random.seed(42)
+a, b = 2, 1
+n_regular = 100
+n_other = 5
+top_k = 10
+names = ["regular", "high var x", "high var y", "high var x and y"]
+colors = ["blue", "green", "orange", "purple"]
+
+
+def leverage_scores(X):
+    # extra column of ones for the intercept
+    A = np.column_stack((X, np.ones(len(X))))
+    H = A @ np.linalg.inv(A.T @ A) @ A.T
+    return np.diag(H)
+
+
+def make_data_1d(mu, var):
+    std = np.sqrt(var)
+    low = np.sqrt(0.1)
+    sizes = [n_regular, n_other, n_other, n_other]
+    x_std = [1, std, 1, std]
+    eps_mu = [0, 0, mu, mu]
+    eps_std = [low, low, std, std]
+
+    x = np.concatenate([np.random.normal(0, x_std[i], sizes[i]) for i in range(4)])
+    eps = np.concatenate([np.random.normal(eps_mu[i], eps_std[i], sizes[i]) for i in range(4)])
+    types = np.repeat(np.arange(4), sizes)
+    return x, a * x + b + eps, types
+
+
+fig, axes = plt.subplots(1, 3, figsize=(15, 4))
+for ax, (mu, var) in zip(axes, [(0, 4), (1, 16), (2, 36)]):
+    x, y, types = make_data_1d(mu, var)
+    scores = leverage_scores(x)
+    top = np.argsort(scores)[-top_k:]
+
+    for t in range(4):
+        ax.scatter(x[types == t], y[types == t], s=15, color=colors[t], label=names[t])
+    ax.scatter(x[top], y[top], s=120, facecolors="none", edgecolors="red",
+               linewidths=1.5, label="top leverage")
+    ax.set_title("mu = " + str(mu) + ", var = " + str(var))
+    ax.set_xlabel("x")
+    ax.set_ylabel("y")
+    ax.legend(fontsize=7)
+
+    print("\nEx 1 (1D) mu:", mu, "var:", var)
+    print("Top", top_k, "leverage points by type:", np.bincount(types[top], minlength=4))
+
+fig.suptitle("Ex 1 - leverage scores, 1D")
+
+# Leverage only depends on x. The points far away on x (green and purple) get
+# the highest scores, the orange ones are not picked more than the regular ones.
+# Some regular points still show up in the top because top_k is fixed.
+
+plt.show()
